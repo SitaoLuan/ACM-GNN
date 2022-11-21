@@ -1,0 +1,11 @@
+# time and memory for each setting
+
+# twitch-gamer # arxiv-year
+#SBATCH --gres=gpu:1
+#SBATCH --mem=15G
+#SBATCH -t 0-0:30
+
+# pokec # snap-patents
+#SBATCH --gpus-per-node=v100l:1
+#SBATCH --mem=100G
+#SBATCH -t 0-1:59
