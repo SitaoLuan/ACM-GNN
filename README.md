@@ -136,11 +136,16 @@ Parts of the code are based on
 If you make advantage of the ACM framework in your research, please cite the following in your manuscript:
 
 ```
-@article{luan2022revisiting,
-  title={Revisiting Heterophily For Graph Neural Networks},
-  author={Luan, Sitao and Hua, Chenqing and Lu, Qincheng and Zhu, Jiaqi and Zhao, Mingde and Zhang, Shuyuan and Chang, Xiao-Wen and Precup, Doina},
-  journal={Conference on Neural Information Processing Systems},
-  year={2022}
+@inproceedings{NEURIPS2022_092359ce,
+ author = {Luan, Sitao and Hua, Chenqing and Lu, Qincheng and Zhu, Jiaqi and Zhao, Mingde and Zhang, Shuyuan and Chang, Xiao-Wen and Precup, Doina},
+ booktitle = {Advances in Neural Information Processing Systems},
+ editor = {S. Koyejo and S. Mohamed and A. Agarwal and D. Belgrave and K. Cho and A. Oh},
+ pages = {1362--1375},
+ publisher = {Curran Associates, Inc.},
+ title = {Revisiting Heterophily For Graph Neural Networks},
+ url = {https://proceedings.neurips.cc/paper_files/paper/2022/file/092359ce5cf60a80e882378944bf1be4-Paper-Conference.pdf},
+ volume = {35},
+ year = {2022}
 }
 ```
 
