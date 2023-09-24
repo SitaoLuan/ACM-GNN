@@ -1,6 +1,0 @@
-2023-09-24 17:14:55: Init - Done Proccessing...
-2023-09-24 17:14:56: Init - Hyperparameter Searching...
-2023-09-24 17:15:41: Optimization - model: acmgcnp, dataset: texas, lr: 0.01000, weight decay 0.00000, dropout 0.0000, split 0, Best Test Result: 0.9180, Training Loss: 0.0000
-2023-09-24 17:15:57: Optimization - model: acmgcnp, dataset: texas, lr: 0.01000, weight decay 0.00000, dropout 0.0000, split 1, Best Test Result: 0.9508, Training Loss: 0.0000
-2023-09-24 17:15:59: Optimization - model: acmgcnp, dataset: texas, lr: 0.01000, weight decay 0.00000, dropout 0.0000, split 2, Best Test Result: 0.7869, Training Loss: 0.0158
-2023-09-24 17:16:04: Optimization - model: acmgcnp, dataset: texas, lr: 0.01000, weight decay 0.00000, dropout 0.0000, split 3, Best Test Result: 0.8525, Training Loss: 0.0001
