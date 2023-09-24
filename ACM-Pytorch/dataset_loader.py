@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from datasets import DeezerDataset, HomophilicDataset, HeterophicDataset
+from datasets import DeezerDataset, HomophilicDataset, HeterophilicDataset
 
 
 class DatasetLoader:
@@ -11,7 +11,7 @@ class DatasetLoader:
         if name in {"cora", "citeseer", "pubmed"}:
             self.dataset = HomophilicDataset(name)
         else:
-            self.dataset = HeterophicDataset(name)
+            self.dataset = HeterophilicDataset(name)
 
         self.device = device
 

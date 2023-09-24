@@ -81,7 +81,7 @@ class DeezerDataset(_BaseDataset):
         return dataset
 
 
-class HeterophicDataset(_BaseDataset):
+class HeterophilicDataset(_BaseDataset):
     def __init__(self, name):
         super().__init__(name)
         self.dataset = self._load()
