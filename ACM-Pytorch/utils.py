@@ -1,28 +1,20 @@
 import os
-from os import path
-import pickle as pkl
 import sys
 
-from google_drive_downloader import GoogleDriveDownloader as gdd
-import networkx as nx
 import numpy as np
 import scipy.sparse as sp
-import scipy
-import scipy.io
-import scipy.sparse
-from sklearn.metrics import roc_auc_score
-from sklearn.preprocessing import normalize as sk_normalize
 import torch
 import torch.nn.functional as F
 
-if torch.cuda.is_available():
-    import scipy.io
-    from torch_geometric.utils import add_self_loops, to_undirected
+from dataset_loader import DatasetLoader
+from google_drive_downloader import GoogleDriveDownloader as gdd
+from sklearn.metrics import roc_auc_score
 
+if torch.cuda.is_available():
+    from torch_geometric.utils import add_self_loops
     from torch_sparse import SparseTensor
 
 
-DATA_PATH = path.dirname(path.abspath(__file__)) + "/data/"
 SPLITS_DRIVE_URL = {
     "snap-patents": "12xbBRqd8mtG_XkNLH8dRRNZJvVM4Pw-N",
     "pokec": "1ZhpAiyTNc0cE_hhgyiqxnkKREHK7MK-_",
@@ -31,36 +23,6 @@ SPLITS_DRIVE_URL = {
 device = f"cuda:0" if torch.cuda.is_available() else "cpu"
 device = torch.device(device)
 sys.setrecursionlimit(99999)
-
-
-class NCDataset(object):
-    def __init__(self, name, root=f"{DATA_PATH}"):
-        """
-        based off of ogb NodePropPredDataset
-        https://github.com/snap-stanford/ogb/blob/master/ogb/nodeproppred/dataset.py
-        Gives torch tensors instead of numpy arrays
-            - name (str): name of the dataset
-            - root (str): root directory to store the dataset folder
-            - meta_dict: dictionary that stores all the meta-information about data. Default is None,
-                    but when something is passed, it uses its information. Useful for debugging for external contributers.
-
-        Usage after construction:
-
-        split_idx = dataset.get_idx_split()
-        train_idx, valid_idx, test_idx = split_idx["train"], split_idx["valid"], split_idx["test"]
-        graph, label = dataset[0]
-
-        Where the graph is a dictionary of the following form:
-        dataset.graph = {'edge_index': edge_index,
-                         'edge_feat': None,
-                         'node_feat': node_feat,
-                         'num_nodes': num_nodes}
-        For additional documentation, see OGB Library-Agnostic Loader https://ogb.stanford.edu/docs/nodeprop/
-
-        """
-        self.name = name  # original name, e.g., ogbn-proteins
-        self.graph = {}
-        self.label = None
 
 
 def accuracy(labels, output):
@@ -197,76 +159,6 @@ def index_to_mask(index, size):
     return mask
 
 
-def load_data(dataset_str):
-    """
-    Loads input data from gcn/data directory
-    ind.dataset_str.x => the feature vectors of the training instances as scipy.sparse.csr.csr_matrix object;
-    ind.dataset_str.tx => the feature vectors of the test instances as scipy.sparse.csr.csr_matrix object;
-    ind.dataset_str.allx => the feature vectors of both labeled and unlabeled training instances
-        (a superset of ind.dataset_str.x) as scipy.sparse.csr.csr_matrix object;
-    ind.dataset_str.y => the one-hot labels of the labeled training instances as numpy.ndarray object;
-    ind.dataset_str.ty => the one-hot labels of the test instances as numpy.ndarray object;
-    ind.dataset_str.ally => the labels for instances in ind.dataset_str.allx as numpy.ndarray object;
-    ind.dataset_str.graph => a dict in the format {index: [index_of_neighbor_nodes]} as collections.defaultdict
-        object;
-    ind.dataset_str.test.index => the indices of test instances in graph, for the inductive setting as list object.
-    All objects above must be saved using python pickle module.
-    :param dataset_str: Dataset name
-    :return: All data input files loaded (as well the training/test data).
-    """
-    names = ["x", "y", "tx", "ty", "allx", "ally", "graph"]
-    objects = []
-    for i in range(len(names)):
-        with open("../data/ind.{}.{}".format(dataset_str, names[i]), "rb") as f:
-            if sys.version_info > (3, 0):
-                objects.append(pkl.load(f, encoding="latin1"))
-            else:
-                objects.append(pkl.load(f))
-
-    x, y, tx, ty, allx, ally, graph = tuple(objects)
-    test_idx_reorder = parse_index_file("../data/ind.{}.test.index".format(dataset_str))
-    test_idx_range = np.sort(test_idx_reorder)
-
-    if dataset_str == "citeseer":
-        # Fix citeseer dataset (there are some isolated nodes in the graph)
-        # Find isolated nodes, add them as zero-vecs into the right position
-        test_idx_range_full = range(min(test_idx_reorder), max(test_idx_reorder) + 1)
-        tx_extended = sp.lil_matrix((len(test_idx_range_full), x.shape[1]))
-        tx_extended[test_idx_range - min(test_idx_range), :] = tx
-        tx = tx_extended
-        ty_extended = np.zeros((len(test_idx_range_full), y.shape[1]))
-        ty_extended[test_idx_range - min(test_idx_range), :] = ty
-        ty = ty_extended
-
-    features = sp.vstack((allx, tx)).tolil()
-    features[test_idx_reorder, :] = features[test_idx_range, :]
-    adj = nx.adjacency_matrix(nx.from_dict_of_lists(graph))
-
-    labels = np.vstack((ally, ty))
-    labels[test_idx_reorder, :] = labels[test_idx_range, :]
-
-    return adj, features, labels
-
-
-def load_deezer_dataset():
-    filename = "deezer-europe"
-    dataset = NCDataset(filename)
-    deezer = scipy.io.loadmat(f"{DATA_PATH}deezer-europe.mat")
-    A, label, features = deezer["A"], deezer["label"], deezer["features"]
-    edge_index = torch.tensor(A.nonzero(), dtype=torch.long)
-    node_feat = torch.tensor(features.todense(), dtype=torch.float)
-    label = torch.tensor(label, dtype=torch.long).squeeze()
-    num_nodes = label.shape[0]
-    dataset.graph = {
-        "edge_index": edge_index,
-        "edge_feat": None,
-        "node_feat": node_feat,
-        "num_nodes": num_nodes,
-    }
-    dataset.label = label
-    return dataset
-
-
 def load_fixed_splits(dataset, sub_dataset):
     """
     loads saved fixed splits for dataset
@@ -289,101 +181,6 @@ def load_fixed_splits(dataset, sub_dataset):
             if not torch.is_tensor(splits_lst[i][key]):
                 splits_lst[i][key] = torch.as_tensor(splits_lst[i][key])
     return splits_lst
-
-
-def load_full_data(dataset_name):
-    if dataset_name in {"cora", "citeseer", "pubmed"}:
-        adj, features, labels = load_data(dataset_name)
-        labels = np.argmax(labels, axis=-1)
-        features = features.todense()
-    elif dataset_name == "deezer-europe":
-        dataset = load_deezer_dataset()
-        dataset.graph["edge_index"] = to_undirected(dataset.graph["edge_index"])
-        row, col = dataset.graph["edge_index"]
-        N = dataset.graph["num_nodes"]
-        adj = sp.coo_matrix((np.ones(row.shape[0]), (row, col)), shape=(N, N))
-        features, labels = dataset.graph["node_feat"], dataset.label
-
-    else:
-        graph_adjacency_list_file_path = os.path.join(
-            "../new_data", dataset_name, "out1_graph_edges.txt"
-        )
-        graph_node_features_and_labels_file_path = os.path.join(
-            "../new_data", dataset_name, "out1_node_feature_label.txt"
-        )
-
-        G = nx.DiGraph().to_undirected()
-        graph_node_features_dict = {}
-        graph_labels_dict = {}
-
-        if dataset_name == "film":
-            with open(
-                graph_node_features_and_labels_file_path
-            ) as graph_node_features_and_labels_file:
-                graph_node_features_and_labels_file.readline()
-                for line in graph_node_features_and_labels_file:
-                    line = line.rstrip().split("\t")
-                    assert len(line) == 3
-                    assert (
-                        int(line[0]) not in graph_node_features_dict
-                        and int(line[0]) not in graph_labels_dict
-                    )
-                    feature_blank = np.zeros(932, dtype=np.uint8)
-                    feature_blank[np.array(line[1].split(","), dtype=np.uint16)] = 1
-                    graph_node_features_dict[int(line[0])] = feature_blank
-                    graph_labels_dict[int(line[0])] = int(line[2])
-        else:
-            with open(
-                graph_node_features_and_labels_file_path
-            ) as graph_node_features_and_labels_file:
-                graph_node_features_and_labels_file.readline()
-                for line in graph_node_features_and_labels_file:
-                    line = line.rstrip().split("\t")
-                    assert len(line) == 3
-                    assert (
-                        int(line[0]) not in graph_node_features_dict
-                        and int(line[0]) not in graph_labels_dict
-                    )
-                    graph_node_features_dict[int(line[0])] = np.array(
-                        line[1].split(","), dtype=np.uint8
-                    )
-                    graph_labels_dict[int(line[0])] = int(line[2])
-
-        with open(graph_adjacency_list_file_path) as graph_adjacency_list_file:
-            graph_adjacency_list_file.readline()
-            for line in graph_adjacency_list_file:
-                line = line.rstrip().split("\t")
-                assert len(line) == 2
-                if int(line[0]) not in G:
-                    G.add_node(
-                        int(line[0]),
-                        features=graph_node_features_dict[int(line[0])],
-                        label=graph_labels_dict[int(line[0])],
-                    )
-                if int(line[1]) not in G:
-                    G.add_node(
-                        int(line[1]),
-                        features=graph_node_features_dict[int(line[1])],
-                        label=graph_labels_dict[int(line[1])],
-                    )
-                G.add_edge(int(line[0]), int(line[1]))
-
-        adj = nx.adjacency_matrix(G, sorted(G.nodes()))
-
-        features = np.array(
-            [
-                features
-                for _, features in sorted(G.nodes(data="features"), key=lambda x: x[0])
-            ]
-        )
-        labels = np.array(
-            [label for _, label in sorted(G.nodes(data="label"), key=lambda x: x[0])]
-        )
-
-    features = torch.FloatTensor(features).to(device)
-    labels = torch.LongTensor(labels).to(device)
-    adj = sparse_mx_to_torch_sparse_tensor(adj)  # .to(device)
-    return adj, features, labels
 
 
 def normalize(mx, eqvar=None):
@@ -436,16 +233,6 @@ def normalize_tensor(mx, eqvar=None):
         r_mat_inv = torch.diag(r_inv)
         mx = torch.mm(r_mat_inv, mx)
         return mx
-
-
-def parse_index_file(filename):
-    """
-    Parse index file.
-    """
-    index = []
-    for line in open(filename):
-        index.append(int(line.strip()))
-    return index
 
 
 def sys_normalized_adjacency(adj):
@@ -524,26 +311,6 @@ def rand_train_test_idx(label, train_prop=0.6, valid_prop=0.2, ignore_negative=T
     return train_idx, valid_idx, test_idx
 
 
-def row_normalized_adjacency(adj):
-    adj = sp.coo_matrix(adj)
-    adj = adj + sp.eye(adj.shape[0])
-    adj_normalized = sk_normalize(adj, norm="l1", axis=1)
-    return sp.coo_matrix(adj_normalized)
-
-
-def sparse_mx_to_torch_sparse_tensor(sparse_mx):
-    """
-    Convert a scipy sparse matrix to a torch sparse tensor.
-    """
-    sparse_mx = sparse_mx.tocoo().astype(np.float32)
-    indices = torch.from_numpy(
-        np.vstack((sparse_mx.row, sparse_mx.col)).astype(np.int64)
-    )
-    values = torch.from_numpy(sparse_mx.data)
-    shape = torch.Size(sparse_mx.shape)
-    return torch.sparse.FloatTensor(indices, values, shape)
-
-
 def train_model(
     model,
     optimizer,
@@ -608,7 +375,9 @@ def train_prep(logger, args):
     }
 
     logger.log_init("Done Proccessing...")
-    adj_low_unnormalized, features, labels = load_full_data(args.dataset_name)
+    ds_loader = DatasetLoader(args.dataset_name, device)
+    adj_low_unnormalized, features, labels = ds_loader.load_dataset()
+
     if (args.model == "acmgcnp" or args.model == "acmgcnpp") and (
         args.structure_info == 1
     ):
