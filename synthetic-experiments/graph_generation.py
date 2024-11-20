@@ -159,7 +159,7 @@ def save_graphs(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Test graph dataset used in PathNet')
+    parser = argparse.ArgumentParser()
     parser.add_argument('--num_class', type=int, default=5, help='Number of classes')
     parser.add_argument('--num_node_total', type=int, default=2000, help='Total number of nodes in graph')
     parser.add_argument('--degree_intra', type=int, default=2,
