@@ -94,15 +94,17 @@ def load_data(dataset_str):
     """
     names = ["x", "y", "tx", "ty", "allx", "ally", "graph"]
     objects = []
+    data_dir = Path(__file__).parent.parent
+    
     for i in range(len(names)):
-        with open("../data/ind.{}.{}".format(dataset_str, names[i]), "rb") as f:
+        with open(f"{data_dir}/data/ind.{dataset_str}.{names[i]}", "rb") as f:
             if sys.version_info > (3, 0):
                 objects.append(pkl.load(f, encoding="latin1"))
             else:
                 objects.append(pkl.load(f))
 
     x, y, tx, ty, allx, ally, graph = tuple(objects)
-    test_idx_reorder = parse_index_file("../data/ind.{}.test.index".format(dataset_str))
+    test_idx_reorder = parse_index_file(f"{data_dir}/data/ind.{dataset_str}.test.index")
     test_idx_range = np.sort(test_idx_reorder)
 
     if dataset_str == "citeseer":
@@ -125,6 +127,7 @@ def load_data(dataset_str):
 
 
 def load_full_data(dataset_name):
+    data_dir = Path(__file__).parent.parent
     if dataset_name in {"cora", "citeseer", "pubmed"}:
         adj, features, labels = load_data(dataset_name)
         labels = np.argmax(labels, axis=-1)
@@ -145,10 +148,10 @@ def load_full_data(dataset_name):
 
     else:
         graph_adjacency_list_file_path = os.path.join(
-            "../new_data", dataset_name, "out1_graph_edges.txt"
+            f"{data_dir}/new_data", dataset_name, "out1_graph_edges.txt"
         )
         graph_node_features_and_labels_file_path = os.path.join(
-            "../new_data", dataset_name, "out1_node_feature_label.txt"
+            f"{data_dir}/new_data", dataset_name, "out1_node_feature_label.txt"
         )
 
         G = nx.DiGraph().to_undirected()

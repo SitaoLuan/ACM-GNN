@@ -14,9 +14,8 @@ Path(BASE_DIR).mkdir(parents=True, exist_ok=True)
 logger = SyntheticExpLogger()
 
 
-def generate_feature(
-        args
-):  # Generate features for balanced dataset
+# Generate features for balanced dataset
+def generate_feature(args): 
     data_dir = f"{BASE_DIR}/features/{args.base_dataset}"
     Path(data_dir).mkdir(parents=True, exist_ok=True)
 
